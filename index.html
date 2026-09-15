@@ -1,1 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0908">
+  <title>Gunpowder News Builder</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">Wasted Wizard Tavern</div>
+      <h1>Gunpowder News Builder</h1>
+    </div>
+    <div class="version">v1.0</div>
+  </header>
 
+  <main class="app-shell">
+    <section class="panel controls-panel">
+      <div class="panel-heading">
+        <div>
+          <h2>1. Load WordPress stories</h2>
+          <p>Pull the newest posts, choose up to four, then edit the newsletter copy.</p>
+        </div>
+      </div>
+
+      <div class="source-row">
+        <label class="field grow">
+          <span>WordPress site</span>
+          <input id="siteUrl" type="url" value="https://www.gunpowderstudios.co.uk" spellcheck="false">
+        </label>
+        <button id="refreshBtn" class="button primary">Refresh stories</button>
+      </div>
+
+      <div class="toolbar-row">
+        <button id="latestFourBtn" class="button">Select latest 4</button>
+        <label class="check"><input id="hideUsed" type="checkbox"> Hide used stories</label>
+        <span id="fetchStatus" class="status">Ready.</span>
+      </div>
+
+      <div id="storyList" class="story-list" aria-live="polite"></div>
+
+      <div class="section-divider"></div>
+
+      <div class="panel-heading compact">
+        <div>
+          <h2>2. Mary’s introduction</h2>
+          <p>This sits above the four story blocks.</p>
+        </div>
+      </div>
+
+      <label class="field">
+        <span>Intro text</span>
+        <textarea id="maryIntro" rows="9" placeholder="Write Mary’s Wasted Wizard Tavern introduction here..."></textarea>
+      </label>
+
+      <div class="section-divider"></div>
+
+      <div class="panel-heading compact">
+        <div>
+          <h2>3. Selected stories</h2>
+          <p>Edit the teaser and button text, then set the order.</p>
+        </div>
+        <span id="selectedCount" class="count-pill">0 / 4</span>
+      </div>
+
+      <div id="selectedList" class="selected-list"></div>
+
+      <div class="actions">
+        <button id="copyHtmlBtn" class="button primary big">Copy Brevo HTML</button>
+        <button id="downloadHtmlBtn" class="button big">Download HTML</button>
+        <button id="clearDraftBtn" class="button ghost">Clear draft</button>
+      </div>
+      <p class="fineprint">Your draft and “used” marks are saved only in this browser.</p>
+    </section>
+
+    <section class="panel preview-panel">
+      <div class="preview-header">
+        <div>
+          <h2>Live newsletter preview</h2>
+          <p>What you copy into Brevo Developer Mode.</p>
+        </div>
+        <div class="segmented" role="group" aria-label="Preview width">
+          <button id="desktopBtn" class="active">Desktop</button>
+          <button id="mobileBtn">Mobile</button>
+        </div>
+      </div>
+
+      <div id="previewStage" class="preview-stage desktop">
+        <iframe id="previewFrame" title="Newsletter preview"></iframe>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
