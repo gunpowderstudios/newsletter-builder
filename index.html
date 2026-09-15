@@ -13,7 +13,7 @@
       <div class="eyebrow">Wasted Wizard Tavern</div>
       <h1>Gunpowder News Builder</h1>
     </div>
-    <div class="version">v1.1</div>
+    <div class="version">v1.2</div>
   </header>
 
   <main class="app-shell">
@@ -95,6 +95,49 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <script>
+    // v1.2 compatibility patch: the app's existing image picker looks at the
+    // first image inside post content before WordPress featured media. For the
+    // newsletter we want the image deliberately chosen in WordPress as the
+    // Featured Image. If a post has no Featured Image, the original body-image
+    // fallback remains available.
+    (() => {
+      const nativeFetch = window.fetch.bind(window);
+      window.fetch = async (...args) => {
+        const response = await nativeFetch(...args);
+        const requestUrl = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url) || '';
+        if (!requestUrl.includes('/wp-json/wp/v2/posts')) return response;
+
+        try {
+          const posts = await response.clone().json();
+          if (!Array.isArray(posts)) return response;
+
+          posts.forEach(post => {
+            const media = post?._embedded?.['wp:featuredmedia']?.[0];
+            const sizes = media?.media_details?.sizes || {};
+            const featured = sizes.large?.source_url || sizes.medium_large?.source_url || media?.source_url || '';
+
+            if (featured && post?.content?.rendered) {
+              // Removing body <img> tags makes the existing app fall through to
+              // its WordPress featured-media lookup without changing article text.
+              post.content.rendered = post.content.rendered.replace(/<img\b[^>]*>/gi, '');
+            }
+          });
+
+          const headers = new Headers();
+          headers.set('Content-Type', 'application/json; charset=utf-8');
+          return new Response(JSON.stringify(posts), {
+            status: response.status,
+            statusText: response.statusText,
+            headers
+          });
+        } catch (error) {
+          console.warn('Featured-image compatibility patch skipped:', error);
+          return response;
+        }
+      };
+    })();
+  </script>
   <script src="app.js"></script>
 </body>
 </html>
