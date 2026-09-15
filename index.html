@@ -13,7 +13,7 @@
       <div class="eyebrow">Wasted Wizard Tavern</div>
       <h1>Gunpowder News Builder</h1>
     </div>
-    <div class="version">v1.6</div>
+    <div class="version">v1.7</div>
   </header>
 
   <main class="app-shell">
@@ -50,6 +50,34 @@
         <span>Intro text</span>
         <textarea id="maryIntro" rows="9" placeholder="Write Mary’s Wasted Wizard Tavern introduction here..."></textarea>
       </label>
+
+      <div class="selected-grid" style="margin-top:10px;">
+        <label class="field">
+          <span>Mary's font</span>
+          <select id="maryIntroFont" style="width:100%;border:1px solid #493724;background:#0f0d0b;color:#f5f0e6;border-radius:7px;padding:11px 12px;outline:none;">
+            <option value="Arial,Helvetica,sans-serif">Arial</option>
+            <option value="Georgia,'Times New Roman',serif">Georgia</option>
+            <option value="'Times New Roman',Times,serif">Times New Roman</option>
+            <option value="Verdana,Geneva,sans-serif">Verdana</option>
+            <option value="'Trebuchet MS',Arial,sans-serif">Trebuchet MS</option>
+            <option value="'Courier New',Courier,monospace">Courier New</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Text size</span>
+          <select id="maryIntroSize" style="width:100%;border:1px solid #493724;background:#0f0d0b;color:#f5f0e6;border-radius:7px;padding:11px 12px;outline:none;">
+            <option value="14">14px</option>
+            <option value="15">15px</option>
+            <option value="16" selected>16px</option>
+            <option value="17">17px</option>
+            <option value="18">18px</option>
+            <option value="19">19px</option>
+            <option value="20">20px</option>
+            <option value="22">22px</option>
+            <option value="24">24px</option>
+          </select>
+        </label>
+      </div>
 
       <div class="section-divider"></div>
 
@@ -93,7 +121,7 @@
         <button id="downloadHtmlBtn" class="button big">Download HTML</button>
         <button id="clearDraftBtn" class="button ghost">Clear draft</button>
       </div>
-      <p class="fineprint">Your draft and “used” marks are saved only in this browser.</p>
+      <p class="fineprint">Your draft, Mary styling and “used” marks are saved only in this browser.</p>
     </section>
 
     <section class="panel preview-panel">
@@ -168,14 +196,49 @@
       };
     })();
   </script>
+
   <script src="app.js"></script>
+
   <script>
-    // v1.6 output patch: link the footer logo, remove the small "Latest Adventure"
-    // kickers, and make each main story heading Gunpowder orange.
+    // v1.7 output patch: footer logo link, orange story titles, no small kicker,
+    // plus editable/persistent Mary intro font and size.
     (() => {
       const HOME_URL = 'https://www.gunpowderstudios.co.uk/';
       const LOGO_SRC = 'https://gunpowderstudios.github.io/newsletter-builder/gunpowder-logo.png';
       const STORY_ORANGE = '#d88312';
+      const STYLE_KEY = 'gunpowder-news-mary-style-v1';
+      const DEFAULT_FONT = 'Arial,Helvetica,sans-serif';
+      const DEFAULT_SIZE = 16;
+
+      const fontSelect = document.getElementById('maryIntroFont');
+      const sizeSelect = document.getElementById('maryIntroSize');
+      const frame = document.getElementById('previewFrame');
+
+      function loadMaryStyle() {
+        let saved = {};
+        try { saved = JSON.parse(localStorage.getItem(STYLE_KEY) || '{}'); } catch (_) {}
+        const font = typeof saved.font === 'string' ? saved.font : DEFAULT_FONT;
+        const size = Number(saved.size) || DEFAULT_SIZE;
+        if (fontSelect && [...fontSelect.options].some(option => option.value === font)) fontSelect.value = font;
+        if (sizeSelect && [...sizeSelect.options].some(option => Number(option.value) === size)) sizeSelect.value = String(size);
+      }
+
+      function saveMaryStyle() {
+        localStorage.setItem(STYLE_KEY, JSON.stringify({
+          font: fontSelect ? fontSelect.value : DEFAULT_FONT,
+          size: sizeSelect ? Number(sizeSelect.value) : DEFAULT_SIZE
+        }));
+      }
+
+      function findMaryIntro(doc) {
+        if (!doc) return null;
+        const explicit = doc.querySelector('.mary-intro');
+        if (explicit) return explicit;
+        return [...doc.querySelectorAll('td.mobile-pad > div')].find(div => {
+          const td = div.parentElement;
+          return td && !td.querySelector('h1') && !td.querySelector('img');
+        }) || null;
+      }
 
       function patchDocument(doc) {
         if (!doc) return;
@@ -197,6 +260,14 @@
         doc.querySelectorAll('.story-title').forEach(title => {
           title.style.color = STORY_ORANGE;
         });
+
+        const mary = findMaryIntro(doc);
+        if (mary) {
+          mary.classList.add('mary-intro');
+          mary.style.fontFamily = fontSelect ? fontSelect.value : DEFAULT_FONT;
+          mary.style.fontSize = `${sizeSelect ? Number(sizeSelect.value) : DEFAULT_SIZE}px`;
+          mary.style.lineHeight = '1.7';
+        }
       }
 
       function transformNewsletterHtml(html) {
@@ -207,14 +278,27 @@
       }
 
       function patchPreview() {
-        const frame = document.getElementById('previewFrame');
-        try {
-          patchDocument(frame && frame.contentDocument);
-        } catch (_) {}
+        try { patchDocument(frame && frame.contentDocument); } catch (_) {}
       }
 
-      const frame = document.getElementById('previewFrame');
+      function showToast(message) {
+        const toast = document.getElementById('toast');
+        if (!toast) return;
+        toast.textContent = message;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2200);
+      }
+
+      loadMaryStyle();
       if (frame) frame.addEventListener('load', patchPreview);
+
+      [fontSelect, sizeSelect].forEach(control => {
+        if (!control) return;
+        control.addEventListener('change', () => {
+          saveMaryStyle();
+          patchPreview();
+        });
+      });
 
       const copyBtn = document.getElementById('copyHtmlBtn');
       if (copyBtn) copyBtn.addEventListener('click', async event => {
@@ -233,12 +317,7 @@
           document.execCommand('copy');
           ta.remove();
         }
-        const toast = document.getElementById('toast');
-        if (toast) {
-          toast.textContent = 'Brevo HTML copied.';
-          toast.classList.add('show');
-          setTimeout(() => toast.classList.remove('show'), 2200);
-        }
+        showToast('Brevo HTML copied.');
       }, true);
 
       const downloadBtn = document.getElementById('downloadHtmlBtn');
