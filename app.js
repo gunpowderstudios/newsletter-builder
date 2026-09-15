@@ -1,8 +1,11 @@
 (() => {
   'use strict';
 
-  const VERSION = '1.1';
+  const VERSION = '1.4';
   const DEFAULT_SITE = 'https://www.gunpowderstudios.co.uk';
+  const DEFAULT_TITLE = 'GUNPOWDER NEWS';
+  const DEFAULT_SUBTITLE = 'Dungeon dispatches, new games, strange discoveries and occasional treasure.';
+  const LOGO_URL = 'https://gunpowderstudios.github.io/newsletter-builder/gunpowder-logo.png';
   const MAX_SELECTED = 4;
   const STORAGE_KEY = 'gunpowder-news-builder-v1';
 
@@ -11,6 +14,8 @@
     selected: [],
     usedIds: new Set(),
     intro: '',
+    newsletterTitle: DEFAULT_TITLE,
+    newsletterSubtitle: DEFAULT_SUBTITLE,
     siteUrl: DEFAULT_SITE,
     previewMode: 'desktop'
   };
@@ -22,6 +27,8 @@
   const hideUsed = el('hideUsed');
   const storyList = el('storyList');
   const fetchStatus = el('fetchStatus');
+  const newsletterTitle = el('newsletterTitle');
+  const newsletterSubtitle = el('newsletterSubtitle');
   const maryIntro = el('maryIntro');
   const selectedList = el('selectedList');
   const selectedCount = el('selectedCount');
@@ -63,16 +70,13 @@
   }
 
   function getFeaturedImage(post) {
-    // Prefer the first image actually used in the article body. On some posts
-    // the WordPress featured-media image is a decorative/transparent asset,
-    // which can look like a huge blank gap in an email preview.
     const html = post?.content?.rendered || '';
     if (html) {
       const holder = document.createElement('div');
       holder.innerHTML = html;
       const bodyImage = holder.querySelector('img');
       if (bodyImage) {
-        const bodySrc = bodyImage.getAttribute('src');
+        const bodySrc = bodyImage.getAttribute('src') || bodyImage.getAttribute('data-src');
         if (bodySrc) return bodySrc;
       }
     }
@@ -102,19 +106,19 @@
       toastMsg('Enter a valid WordPress URL.');
       return;
     }
+
     state.siteUrl = base;
     fetchStatus.textContent = 'Loading WordPress posts…';
     refreshBtn.disabled = true;
+
     try {
       const endpoint = `${base}/wp-json/wp/v2/posts?per_page=12&_embed=1`;
       const res = await fetch(endpoint, { headers: { Accept: 'application/json' } });
       if (!res.ok) throw new Error(`WordPress returned ${res.status}`);
+
       const posts = await res.json();
       state.posts = posts.map(normalizePost);
 
-      // Keep any wording the user has edited, but refresh the story image from
-      // WordPress. This also repairs drafts saved by v1.0 that used an odd
-      // featured-media asset and appeared as a large blank area in preview.
       state.selected = state.selected.map(saved => {
         const fresh = state.posts.find(post => post.id === saved.id);
         return fresh ? { ...saved, image: fresh.image || saved.image } : saved;
@@ -142,6 +146,7 @@
       storyList.innerHTML = '<div class="selected-empty">No stories to show.</div>';
       return;
     }
+
     storyList.innerHTML = posts.map(p => {
       const selected = state.selected.some(s => s.id === p.id);
       const used = state.usedIds.has(p.id);
@@ -277,8 +282,7 @@
   }
 
   function renderPreview() {
-    const html = buildBrevoHtml();
-    previewFrame.srcdoc = html;
+    previewFrame.srcdoc = buildBrevoHtml();
     const storyHeight = Math.max(0, state.selected.length - 1) * 520;
     previewFrame.style.height = `${1080 + storyHeight + Math.min(state.intro.length, 1000) * 0.22}px`;
   }
@@ -294,20 +298,24 @@
 
   function buildBrevoHtml() {
     const intro = state.intro.trim();
+    const title = (state.newsletterTitle || DEFAULT_TITLE).trim();
+    const subtitle = (state.newsletterSubtitle || '').trim();
+
     const stories = state.selected.map((s, i) => {
       const image = s.image ? `
         <a href="${escapeAttr(s.link)}" target="_blank" style="text-decoration:none;">
           <img src="${escapeAttr(s.image)}" alt="${escapeAttr(s.title)}" width="544" style="display:block;width:100%;max-width:544px;height:auto;border:0;margin:0;">
         </a>` : '';
+
       return `
       <tr>
         <td style="padding:0 28px 34px 28px;">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;border-top:${i === 0 ? '0' : '1px solid #2d261f'};padding-top:${i === 0 ? '0' : '28px'};">
-            <tr><td style="padding-top:${i === 0 ? '0' : '28px'};">${image}</td></tr>
+            ${image ? `<tr><td style="padding-top:${i === 0 ? '0' : '28px'};">${image}</td></tr>` : ''}
             <tr>
-              <td style="padding-top:20px;">
+              <td style="padding-top:${image ? '20px' : (i === 0 ? '0' : '28px')};">
                 <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.3;letter-spacing:2px;text-transform:uppercase;color:#d88312;font-weight:bold;margin-bottom:8px;">Latest Adventure</div>
-                <h2 style="margin:0 0 12px 0;font-family:Georgia,'Times New Roman',serif;font-size:28px;line-height:1.25;color:#ffffff;font-weight:bold;">${escapeHtml(s.title)}</h2>
+                <h2 class="story-title" style="margin:0 0 12px 0;font-family:Georgia,'Times New Roman',serif;font-size:28px;line-height:1.25;color:#ffffff;font-weight:bold;">${escapeHtml(s.title)}</h2>
                 <p style="margin:0 0 20px 0;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;color:#f2f2f2;">${escapeHtml(s.teaser)}</p>
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                   <tr>
@@ -325,17 +333,19 @@
 
     const introBlock = intro ? `
       <tr>
-        <td style="padding:0 28px 30px 28px;">
+        <td class="mobile-pad" style="padding:24px 28px 30px 28px;">
           <div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;color:#f2f2f2;">${paragraphize(intro)}</div>
         </td>
       </tr>` : '';
+
+    const subtitleBlock = subtitle ? `<p style="margin:10px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#cfc5b7;">${escapeHtml(subtitle)}</p>` : '';
 
     return `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gunpowder News</title>
+<title>${escapeHtml(title)}</title>
 <style>
   body{margin:0;padding:0;background:#000000;} table{border-collapse:collapse;} img{border:0;} a[x-apple-data-detectors]{color:inherit!important;text-decoration:none!important;}
   @media only screen and (max-width:620px){.email-wrap{width:100%!important}.mobile-pad{padding-left:16px!important;padding-right:16px!important}.hero-title{font-size:30px!important}.story-title{font-size:24px!important}}
@@ -348,14 +358,15 @@
   <tr>
     <td class="mobile-pad" style="padding:34px 28px 28px 28px;text-align:center;border-bottom:1px solid #2d261f;">
       <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.3;letter-spacing:3px;text-transform:uppercase;color:#d88312;font-weight:bold;margin-bottom:8px;">News from the Wasted Wizard Tavern</div>
-      <h1 class="hero-title" style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:36px;line-height:1.15;color:#ffffff;font-weight:bold;">GUNPOWDER NEWS</h1>
-      <p style="margin:10px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#cfc5b7;">Dungeon dispatches, new games, strange discoveries and occasional treasure.</p>
+      <h1 class="hero-title" style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:36px;line-height:1.15;color:#ffffff;font-weight:bold;">${escapeHtml(title)}</h1>
+      ${subtitleBlock}
     </td>
   </tr>
   ${introBlock}
   ${stories || `<tr><td style="padding:40px 28px;color:#9b8f80;font-family:Arial,Helvetica,sans-serif;text-align:center;">Choose up to four stories in the builder.</td></tr>`}
   <tr>
-    <td class="mobile-pad" style="padding:24px 28px 34px 28px;border-top:1px solid #2d261f;text-align:center;">
+    <td class="mobile-pad" style="padding:28px 28px 34px 28px;border-top:1px solid #2d261f;text-align:center;">
+      <img src="${LOGO_URL}" alt="Gunpowder Studios" width="150" style="display:block;width:150px;max-width:150px;height:auto;border:0;margin:0 auto 14px auto;">
       <p style="margin:0 0 7px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.5;color:#d88312;font-weight:bold;">Gunpowder Studios</p>
       <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#8d8377;">This email was sent to {{ contact.EMAIL }}.<br>You received it because you subscribed to Gunpowder Studios news.</p>
       <p style="margin:12px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;"><a href="{{ mirror }}" style="color:#d88312;text-decoration:underline;">View in browser</a> &nbsp;|&nbsp; <a href="{{ unsubscribe }}" style="color:#d88312;text-decoration:underline;">Unsubscribe</a></p>
@@ -397,10 +408,14 @@
   }
 
   function clearDraft() {
-    if (!confirm('Clear Mary’s intro and all selected stories?')) return;
+    if (!confirm('Clear Mary’s intro, newsletter heading and all selected stories?')) return;
     state.selected = [];
     state.intro = '';
+    state.newsletterTitle = DEFAULT_TITLE;
+    state.newsletterSubtitle = DEFAULT_SUBTITLE;
     maryIntro.value = '';
+    newsletterTitle.value = DEFAULT_TITLE;
+    newsletterSubtitle.value = DEFAULT_SUBTITLE;
     renderAll();
   }
 
@@ -409,6 +424,8 @@
       selected: state.selected,
       usedIds: [...state.usedIds],
       intro: state.intro,
+      newsletterTitle: state.newsletterTitle,
+      newsletterSubtitle: state.newsletterSubtitle,
       siteUrl: state.siteUrl,
       previewMode: state.previewMode
     };
@@ -421,13 +438,18 @@
       state.selected = Array.isArray(saved.selected) ? saved.selected : [];
       state.usedIds = new Set(Array.isArray(saved.usedIds) ? saved.usedIds : []);
       state.intro = typeof saved.intro === 'string' ? saved.intro : '';
+      state.newsletterTitle = typeof saved.newsletterTitle === 'string' && saved.newsletterTitle.trim() ? saved.newsletterTitle : DEFAULT_TITLE;
+      state.newsletterSubtitle = typeof saved.newsletterSubtitle === 'string' ? saved.newsletterSubtitle : DEFAULT_SUBTITLE;
       state.siteUrl = typeof saved.siteUrl === 'string' ? saved.siteUrl : DEFAULT_SITE;
       state.previewMode = saved.previewMode === 'mobile' ? 'mobile' : 'desktop';
     } catch (e) {
       console.warn('Could not restore draft', e);
     }
+
     siteUrl.value = state.siteUrl;
     maryIntro.value = state.intro;
+    newsletterTitle.value = state.newsletterTitle;
+    newsletterSubtitle.value = state.newsletterSubtitle;
     setPreviewMode(state.previewMode);
   }
 
@@ -443,12 +465,29 @@
   function escapeHtml(value = '') {
     return String(value).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
   }
-  function escapeAttr(value = '') { return escapeHtml(value); }
+
+  function escapeAttr(value = '') {
+    return escapeHtml(value);
+  }
 
   refreshBtn.addEventListener('click', fetchPosts);
   latestFourBtn.addEventListener('click', selectLatestFour);
   hideUsed.addEventListener('change', renderStories);
-  maryIntro.addEventListener('input', () => { state.intro = maryIntro.value; renderPreview(); saveState(); });
+  newsletterTitle.addEventListener('input', () => {
+    state.newsletterTitle = newsletterTitle.value;
+    renderPreview();
+    saveState();
+  });
+  newsletterSubtitle.addEventListener('input', () => {
+    state.newsletterSubtitle = newsletterSubtitle.value;
+    renderPreview();
+    saveState();
+  });
+  maryIntro.addEventListener('input', () => {
+    state.intro = maryIntro.value;
+    renderPreview();
+    saveState();
+  });
   copyHtmlBtn.addEventListener('click', copyHtml);
   downloadHtmlBtn.addEventListener('click', downloadHtml);
   clearDraftBtn.addEventListener('click', clearDraft);
