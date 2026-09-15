@@ -13,7 +13,7 @@
       <div class="eyebrow">Wasted Wizard Tavern</div>
       <h1>Gunpowder News Builder</h1>
     </div>
-    <div class="version">v1.3</div>
+    <div class="version">v1.4</div>
   </header>
 
   <main class="app-shell">
@@ -45,7 +45,27 @@
 
       <div class="panel-heading compact">
         <div>
-          <h2>2. Mary’s introduction</h2>
+          <h2>2. Newsletter heading</h2>
+          <p>Change the main title and subtitle if you want a different theme each month.</p>
+        </div>
+      </div>
+
+      <div class="selected-grid" style="margin-top:14px;">
+        <label class="field">
+          <span>Newsletter title</span>
+          <input id="newsletterTitle" type="text" value="GUNPOWDER NEWS" spellcheck="true">
+        </label>
+        <label class="field">
+          <span>Subtitle</span>
+          <input id="newsletterSubtitle" type="text" value="Dungeon dispatches, new games, strange discoveries and occasional treasure." spellcheck="true">
+        </label>
+      </div>
+
+      <div class="section-divider"></div>
+
+      <div class="panel-heading compact">
+        <div>
+          <h2>3. Mary’s introduction</h2>
           <p>This sits above the four story blocks.</p>
         </div>
       </div>
@@ -59,7 +79,7 @@
 
       <div class="panel-heading compact">
         <div>
-          <h2>3. Selected stories</h2>
+          <h2>4. Selected stories</h2>
           <p>Edit the teaser and button text, then set the order.</p>
         </div>
         <span id="selectedCount" class="count-pill">0 / 4</span>
@@ -96,10 +116,9 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
-    // v1.3 image compatibility patch. The legacy app prefers the first image
-    // inside post content. Normally we force it to use WordPress Featured Image.
-    // If that Featured Image is a PNG and the article contains a flattened JPG/
-    // WebP alternative, use that instead to avoid large transparent blank areas.
+    // v1.3+ image compatibility patch. Normally use the WordPress Featured Image.
+    // If that image is a PNG and the article contains a flattened JPG/WebP,
+    // prefer the flattened version for more predictable email rendering.
     (() => {
       const nativeFetch = window.fetch.bind(window);
       window.fetch = async (...args) => {
@@ -128,9 +147,6 @@
               ? bodyImages.find(src => /\.(?:jpe?g|webp)(?:$|\?)/i.test(src))
               : '';
 
-            // Remove original body images so the legacy picker cannot grab the
-            // wrong one. For troublesome PNG featured images, prepend a flattened
-            // body image so it becomes the chosen newsletter image.
             const textOnly = html.replace(/<img\b[^>]*>/gi, '');
             post.content.rendered = flattened
               ? `<img src="${flattened}" alt="">${textOnly}`
