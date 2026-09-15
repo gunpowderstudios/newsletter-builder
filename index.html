@@ -13,16 +13,52 @@
       <div class="eyebrow">Wasted Wizard Tavern</div>
       <h1>Gunpowder News Builder</h1>
     </div>
-    <div class="version">v1.4</div>
+    <div class="version">v1.5</div>
   </header>
 
   <main class="app-shell">
     <section class="panel controls-panel">
+
+      <div class="panel-heading compact">
+        <div>
+          <h2>1. Newsletter heading</h2>
+          <p>Change the main title and subtitle if you want a different theme each month.</p>
+        </div>
+      </div>
+
+      <div class="selected-grid" style="margin-top:14px;grid-template-columns:1fr;">
+        <label class="field">
+          <span>Newsletter title</span>
+          <input id="newsletterTitle" type="text" value="GUNPOWDER NEWS" spellcheck="true">
+        </label>
+        <label class="field">
+          <span>Subtitle</span>
+          <input id="newsletterSubtitle" type="text" value="Dungeon dispatches, new games, strange discoveries and occasional treasure." spellcheck="true">
+        </label>
+      </div>
+
+      <div class="section-divider"></div>
+
+      <div class="panel-heading compact">
+        <div>
+          <h2>2. Mary’s introduction</h2>
+          <p>This sits below the heading and above the stories.</p>
+        </div>
+      </div>
+
+      <label class="field">
+        <span>Intro text</span>
+        <textarea id="maryIntro" rows="9" placeholder="Write Mary’s Wasted Wizard Tavern introduction here..."></textarea>
+      </label>
+
+      <div class="section-divider"></div>
+
       <div class="panel-heading">
         <div>
-          <h2>1. Load WordPress stories</h2>
-          <p>Pull the newest posts, choose up to four, then edit the newsletter copy.</p>
+          <h2>3. Stories</h2>
+          <p>Pull the newest WordPress posts, choose up to four, then edit the newsletter copy and order.</p>
         </div>
+        <span id="selectedCount" class="count-pill">0 / 4</span>
       </div>
 
       <div class="source-row">
@@ -45,44 +81,9 @@
 
       <div class="panel-heading compact">
         <div>
-          <h2>2. Newsletter heading</h2>
-          <p>Change the main title and subtitle if you want a different theme each month.</p>
-        </div>
-      </div>
-
-      <div class="selected-grid" style="margin-top:14px;grid-template-columns:1fr;">
-        <label class="field">
-          <span>Newsletter title</span>
-          <input id="newsletterTitle" type="text" value="GUNPOWDER NEWS" spellcheck="true">
-        </label>
-        <label class="field">
-          <span>Subtitle</span>
-          <input id="newsletterSubtitle" type="text" value="Dungeon dispatches, new games, strange discoveries and occasional treasure." spellcheck="true">
-        </label>
-      </div>
-
-      <div class="section-divider"></div>
-
-      <div class="panel-heading compact">
-        <div>
-          <h2>3. Mary’s introduction</h2>
-          <p>This sits above the four story blocks.</p>
-        </div>
-      </div>
-
-      <label class="field">
-        <span>Intro text</span>
-        <textarea id="maryIntro" rows="9" placeholder="Write Mary’s Wasted Wizard Tavern introduction here..."></textarea>
-      </label>
-
-      <div class="section-divider"></div>
-
-      <div class="panel-heading compact">
-        <div>
-          <h2>4. Selected stories</h2>
+          <h2>Selected stories</h2>
           <p>Edit the teaser and button text, then set the order.</p>
         </div>
-        <span id="selectedCount" class="count-pill">0 / 4</span>
       </div>
 
       <div id="selectedList" class="selected-list"></div>
@@ -168,5 +169,78 @@
     })();
   </script>
   <script src="app.js"></script>
+  <script>
+    // v1.5 footer patch: make the Gunpowder Studios logo clickable in the preview,
+    // copied Brevo HTML and downloaded HTML without changing the core builder logic.
+    (() => {
+      const HOME_URL = 'https://www.gunpowderstudios.co.uk/';
+      const LOGO_SRC = 'https://gunpowderstudios.github.io/newsletter-builder/gunpowder-logo.png';
+
+      function linkLogoInHtml(html) {
+        if (!html || html.includes(`href="${HOME_URL}"`) && html.includes(LOGO_SRC)) return html;
+        const escaped = LOGO_SRC.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp(`(<img[^>]+src=["']${escaped}["'][^>]*>)`, 'i');
+        return html.replace(re, `<a href="${HOME_URL}" target="_blank" style="text-decoration:none;">$1</a>`);
+      }
+
+      function patchPreviewLogo() {
+        const frame = document.getElementById('previewFrame');
+        try {
+          const doc = frame.contentDocument;
+          const img = doc && [...doc.images].find(i => i.src === LOGO_SRC || i.alt === 'Gunpowder Studios');
+          if (img && !(img.parentElement && img.parentElement.tagName === 'A')) {
+            const a = doc.createElement('a');
+            a.href = HOME_URL;
+            a.target = '_blank';
+            a.style.textDecoration = 'none';
+            img.parentNode.insertBefore(a, img);
+            a.appendChild(img);
+          }
+        } catch (_) {}
+      }
+
+      const frame = document.getElementById('previewFrame');
+      if (frame) frame.addEventListener('load', patchPreviewLogo);
+
+      const copyBtn = document.getElementById('copyHtmlBtn');
+      if (copyBtn) copyBtn.addEventListener('click', async event => {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const html = linkLogoInHtml(frame ? frame.srcdoc : '');
+        try {
+          await navigator.clipboard.writeText(html);
+        } catch (_) {
+          const ta = document.createElement('textarea');
+          ta.value = html;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          ta.remove();
+        }
+        const toast = document.getElementById('toast');
+        if (toast) {
+          toast.textContent = 'Brevo HTML copied.';
+          toast.classList.add('show');
+          setTimeout(() => toast.classList.remove('show'), 2200);
+        }
+      }, true);
+
+      const downloadBtn = document.getElementById('downloadHtmlBtn');
+      if (downloadBtn) downloadBtn.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const html = linkLogoInHtml(frame ? frame.srcdoc : '');
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `gunpowder-news-${new Date().toISOString().slice(0,10)}.html`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }, true);
+    })();
+  </script>
 </body>
 </html>
