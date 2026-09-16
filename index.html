@@ -13,7 +13,7 @@
       <div class="eyebrow">Wasted Wizard Tavern</div>
       <h1>Gunpowder News Builder</h1>
     </div>
-    <div class="version">v1.7</div>
+    <div class="version">v1.8</div>
   </header>
 
   <main class="app-shell">
@@ -42,16 +42,34 @@
       <div class="panel-heading compact">
         <div>
           <h2>2. Mary’s introduction</h2>
-          <p>This sits below the heading and above the stories.</p>
+          <p>A light WordPress-style editor for text, links and images.</p>
         </div>
       </div>
 
-      <label class="field">
+      <div class="field" style="margin-top:14px;">
         <span>Intro text</span>
-        <textarea id="maryIntro" rows="9" placeholder="Write Mary’s Wasted Wizard Tavern introduction here..."></textarea>
-      </label>
+        <div id="maryEditorShell" style="border:1px solid #c3c4c7;border-radius:7px;overflow:hidden;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.12);">
+          <div id="maryToolbar" role="toolbar" aria-label="Mary introduction formatting" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;padding:7px;background:#f6f7f7;border-bottom:1px solid #c3c4c7;">
+            <button type="button" data-cmd="bold" title="Bold" style="min-width:34px;padding:6px 9px;border:1px solid #c3c4c7;border-radius:3px;background:#fff;color:#1d2327;font-weight:700;cursor:pointer;">B</button>
+            <button type="button" data-cmd="italic" title="Italic" style="min-width:34px;padding:6px 9px;border:1px solid #c3c4c7;border-radius:3px;background:#fff;color:#1d2327;font-style:italic;cursor:pointer;">I</button>
+            <button type="button" data-action="link" title="Add link" style="padding:6px 9px;border:1px solid #c3c4c7;border-radius:3px;background:#fff;color:#1d2327;cursor:pointer;">Link</button>
+            <button type="button" data-action="image" title="Insert image from URL" style="padding:6px 9px;border:1px solid #c3c4c7;border-radius:3px;background:#fff;color:#1d2327;cursor:pointer;">Image</button>
+            <button type="button" data-cmd="insertUnorderedList" title="Bulleted list" style="padding:6px 9px;border:1px solid #c3c4c7;border-radius:3px;background:#fff;color:#1d2327;cursor:pointer;">• List</button>
+            <button type="button" data-cmd="insertOrderedList" title="Numbered list" style="padding:6px 9px;border:1px solid #c3c4c7;border-radius:3px;background:#fff;color:#1d2327;cursor:pointer;">1. List</button>
+            <button type="button" data-cmd="removeFormat" title="Clear text formatting" style="padding:6px 9px;border:1px solid #c3c4c7;border-radius:3px;background:#fff;color:#1d2327;cursor:pointer;">Clear</button>
+            <span style="width:1px;height:24px;background:#c3c4c7;margin:0 2px;"></span>
+            <button id="maryHtmlToggle" type="button" title="Edit HTML source" style="padding:6px 9px;border:1px solid #c3c4c7;border-radius:3px;background:#fff;color:#1d2327;cursor:pointer;font-family:monospace;">&lt;/&gt; HTML</button>
+          </div>
+          <div id="maryRichEditor" contenteditable="true" spellcheck="true" aria-label="Mary introduction rich text" style="min-height:190px;padding:16px 18px;background:#fff;color:#1d2327;outline:none;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;text-align:left;"></div>
+          <textarea id="maryHtmlSource" aria-label="Mary introduction HTML source" spellcheck="false" style="display:none;width:100%;min-height:190px;margin:0;border:0;border-radius:0;padding:16px 18px;background:#fff;color:#1d2327;outline:none;resize:vertical;font:14px/1.55 Menlo,Monaco,Consolas,monospace;"></textarea>
+        </div>
+        <span style="font-weight:400;color:#aa9b88;">Use Image for an image URL. HTML view is there for anything unusual.</span>
+      </div>
 
-      <div class="selected-grid" style="margin-top:10px;">
+      <!-- Kept for the original builder state/save logic. v1.8 synchronises the rich editor with it. -->
+      <textarea id="maryIntro" rows="1" aria-hidden="true" tabindex="-1" style="display:none;"></textarea>
+
+      <div class="selected-grid" style="margin-top:10px;grid-template-columns:1fr 160px 160px;">
         <label class="field">
           <span>Mary's font</span>
           <select id="maryIntroFont" style="width:100%;border:1px solid #493724;background:#0f0d0b;color:#f5f0e6;border-radius:7px;padding:11px 12px;outline:none;">
@@ -75,6 +93,14 @@
             <option value="20">20px</option>
             <option value="22">22px</option>
             <option value="24">24px</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Intro padding</span>
+          <select id="maryIntroPadding" style="width:100%;border:1px solid #493724;background:#0f0d0b;color:#f5f0e6;border-radius:7px;padding:11px 12px;outline:none;">
+            <option value="16">Compact</option>
+            <option value="24" selected>Standard</option>
+            <option value="32">Roomy</option>
           </select>
         </label>
       </div>
@@ -121,7 +147,7 @@
         <button id="downloadHtmlBtn" class="button big">Download HTML</button>
         <button id="clearDraftBtn" class="button ghost">Clear draft</button>
       </div>
-      <p class="fineprint">Your draft, Mary styling and “used” marks are saved only in this browser.</p>
+      <p class="fineprint">Your draft, Mary formatting and “used” marks are saved only in this browser.</p>
     </section>
 
     <section class="panel preview-panel">
@@ -200,34 +226,201 @@
   <script src="app.js"></script>
 
   <script>
-    // v1.7 output patch: footer logo link, orange story titles, no small kicker,
-    // plus editable/persistent Mary intro font and size.
+    // v1.8: light WordPress-style rich editor for Mary's intro. It keeps the
+    // original app.js draft logic intact, then enhances the final email HTML.
     (() => {
       const HOME_URL = 'https://www.gunpowderstudios.co.uk/';
       const LOGO_SRC = 'https://gunpowderstudios.github.io/newsletter-builder/gunpowder-logo.png';
       const STORY_ORANGE = '#d88312';
       const STYLE_KEY = 'gunpowder-news-mary-style-v1';
+      const RICH_KEY = 'gunpowder-news-mary-rich-v1';
       const DEFAULT_FONT = 'Arial,Helvetica,sans-serif';
       const DEFAULT_SIZE = 16;
+      const DEFAULT_PADDING = 24;
 
       const fontSelect = document.getElementById('maryIntroFont');
       const sizeSelect = document.getElementById('maryIntroSize');
+      const paddingSelect = document.getElementById('maryIntroPadding');
+      const legacyIntro = document.getElementById('maryIntro');
+      const editor = document.getElementById('maryRichEditor');
+      const source = document.getElementById('maryHtmlSource');
+      const htmlToggle = document.getElementById('maryHtmlToggle');
+      const toolbar = document.getElementById('maryToolbar');
       const frame = document.getElementById('previewFrame');
+      let sourceMode = false;
 
-      function loadMaryStyle() {
-        let saved = {};
-        try { saved = JSON.parse(localStorage.getItem(STYLE_KEY) || '{}'); } catch (_) {}
-        const font = typeof saved.font === 'string' ? saved.font : DEFAULT_FONT;
-        const size = Number(saved.size) || DEFAULT_SIZE;
-        if (fontSelect && [...fontSelect.options].some(option => option.value === font)) fontSelect.value = font;
-        if (sizeSelect && [...sizeSelect.options].some(option => Number(option.value) === size)) sizeSelect.value = String(size);
+      function showToast(message) {
+        const toast = document.getElementById('toast');
+        if (!toast) return;
+        toast.textContent = message;
+        toast.classList.add('show');
+        clearTimeout(showToast.timer);
+        showToast.timer = setTimeout(() => toast.classList.remove('show'), 2200);
       }
 
-      function saveMaryStyle() {
+      function escapeHtml(value = '') {
+        return String(value).replace(/[&<>"']/g, ch => ({
+          '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+        }[ch]));
+      }
+
+      function plainTextToHtml(text = '') {
+        return text
+          .split(/\n\s*\n/)
+          .map(part => part.trim())
+          .filter(Boolean)
+          .map(part => `<p>${escapeHtml(part).replace(/\n/g, '<br>')}</p>`)
+          .join('');
+      }
+
+      function sanitizeRichHtml(html = '') {
+        const doc = new DOMParser().parseFromString(`<div id="root">${html}</div>`, 'text/html');
+        const root = doc.getElementById('root');
+        if (!root) return '';
+
+        root.querySelectorAll('script,style,iframe,object,embed,form,input,button,video,audio').forEach(node => node.remove());
+
+        root.querySelectorAll('*').forEach(node => {
+          [...node.attributes].forEach(attr => {
+            const name = attr.name.toLowerCase();
+            if (name.startsWith('on')) node.removeAttribute(attr.name);
+            if (name === 'style' && !['IMG'].includes(node.tagName)) node.removeAttribute(attr.name);
+          });
+
+          if (node.tagName === 'A') {
+            const href = node.getAttribute('href') || '';
+            if (/^javascript:/i.test(href)) node.removeAttribute('href');
+            node.setAttribute('target', '_blank');
+            node.setAttribute('style', 'color:#d88312;text-decoration:underline;');
+          }
+
+          if (node.tagName === 'IMG') {
+            const src = node.getAttribute('src') || '';
+            if (!/^https?:\/\//i.test(src)) {
+              node.remove();
+              return;
+            }
+            node.setAttribute('style', 'display:block;width:100%;max-width:544px;height:auto;border:0;margin:14px 0;');
+            node.setAttribute('alt', node.getAttribute('alt') || '');
+          }
+        });
+
+        return root.innerHTML;
+      }
+
+      function currentRichHtml() {
+        return sanitizeRichHtml(sourceMode ? source.value : editor.innerHTML);
+      }
+
+      function currentPlainText() {
+        const holder = document.createElement('div');
+        holder.innerHTML = currentRichHtml();
+        return (holder.innerText || holder.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+      }
+
+      function loadSettings() {
+        let style = {};
+        try { style = JSON.parse(localStorage.getItem(STYLE_KEY) || '{}'); } catch (_) {}
+
+        const font = typeof style.font === 'string' ? style.font : DEFAULT_FONT;
+        const size = Number(style.size) || DEFAULT_SIZE;
+        const padding = Number(style.padding) || DEFAULT_PADDING;
+
+        if (fontSelect && [...fontSelect.options].some(option => option.value === font)) fontSelect.value = font;
+        if (sizeSelect && [...sizeSelect.options].some(option => Number(option.value) === size)) sizeSelect.value = String(size);
+        if (paddingSelect && [...paddingSelect.options].some(option => Number(option.value) === padding)) paddingSelect.value = String(padding);
+
+        let rich = '';
+        try { rich = localStorage.getItem(RICH_KEY) || ''; } catch (_) {}
+        if (!rich && legacyIntro && legacyIntro.value.trim()) rich = plainTextToHtml(legacyIntro.value);
+        editor.innerHTML = sanitizeRichHtml(rich);
+        applyEditorTypography();
+      }
+
+      function saveSettings() {
         localStorage.setItem(STYLE_KEY, JSON.stringify({
           font: fontSelect ? fontSelect.value : DEFAULT_FONT,
-          size: sizeSelect ? Number(sizeSelect.value) : DEFAULT_SIZE
+          size: sizeSelect ? Number(sizeSelect.value) : DEFAULT_SIZE,
+          padding: paddingSelect ? Number(paddingSelect.value) : DEFAULT_PADDING
         }));
+        localStorage.setItem(RICH_KEY, currentRichHtml());
+      }
+
+      function applyEditorTypography() {
+        if (!editor) return;
+        editor.style.fontFamily = fontSelect ? fontSelect.value : DEFAULT_FONT;
+        editor.style.fontSize = `${sizeSelect ? Number(sizeSelect.value) : DEFAULT_SIZE}px`;
+      }
+
+      function syncLegacyIntro() {
+        if (!legacyIntro) return;
+        const html = currentRichHtml();
+        const plain = currentPlainText();
+        const hasContent = html.replace(/<[^>]+>/g, '').trim() || /<img\b/i.test(html);
+        legacyIntro.value = plain || (hasContent ? '[image]' : '');
+        legacyIntro.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+
+      function normaliseUrl(url) {
+        const clean = (url || '').trim();
+        if (!clean) return '';
+        if (/^(https?:|mailto:|tel:|#)/i.test(clean)) return clean;
+        return `https://${clean}`;
+      }
+
+      function runCommand(command) {
+        editor.focus();
+        document.execCommand(command, false, null);
+        saveSettings();
+        syncLegacyIntro();
+      }
+
+      function addLink() {
+        if (sourceMode) return;
+        const url = normaliseUrl(prompt('Paste the link URL:') || '');
+        if (!url) return;
+        editor.focus();
+        const selection = window.getSelection();
+        if (selection && selection.toString()) {
+          document.execCommand('createLink', false, url);
+        } else {
+          document.execCommand('insertHTML', false, `<a href="${escapeHtml(url)}">${escapeHtml(url)}</a>`);
+        }
+        saveSettings();
+        syncLegacyIntro();
+      }
+
+      function addImage() {
+        if (sourceMode) return;
+        const url = normaliseUrl(prompt('Paste the image URL (JPG, PNG or WebP):') || '');
+        if (!url) return;
+        editor.focus();
+        document.execCommand('insertHTML', false, `<img src="${escapeHtml(url)}" alt="" style="display:block;max-width:100%;height:auto;margin:14px 0;">`);
+        saveSettings();
+        syncLegacyIntro();
+      }
+
+      function toggleHtmlMode() {
+        if (!sourceMode) {
+          source.value = editor.innerHTML;
+          editor.style.display = 'none';
+          source.style.display = 'block';
+          sourceMode = true;
+          htmlToggle.style.background = '#d88312';
+          htmlToggle.style.color = '#100d09';
+          source.focus();
+        } else {
+          editor.innerHTML = sanitizeRichHtml(source.value);
+          source.style.display = 'none';
+          editor.style.display = 'block';
+          sourceMode = false;
+          htmlToggle.style.background = '#fff';
+          htmlToggle.style.color = '#1d2327';
+          applyEditorTypography();
+          saveSettings();
+          syncLegacyIntro();
+          editor.focus();
+        }
       }
 
       function findMaryIntro(doc) {
@@ -240,17 +433,45 @@
         }) || null;
       }
 
+      function styleRichEmailContent(mary) {
+        mary.querySelectorAll('p,div').forEach(node => {
+          node.style.margin = '0 0 14px 0';
+        });
+        mary.querySelectorAll('a').forEach(node => {
+          node.style.color = STORY_ORANGE;
+          node.style.textDecoration = 'underline';
+          node.setAttribute('target', '_blank');
+        });
+        mary.querySelectorAll('img').forEach(node => {
+          node.style.display = 'block';
+          node.style.width = '100%';
+          node.style.maxWidth = '544px';
+          node.style.height = 'auto';
+          node.style.border = '0';
+          node.style.margin = '14px 0';
+        });
+        mary.querySelectorAll('ul,ol').forEach(node => {
+          node.style.margin = '0 0 14px 22px';
+          node.style.padding = '0';
+        });
+        mary.querySelectorAll('li').forEach(node => {
+          node.style.marginBottom = '6px';
+        });
+        const last = mary.lastElementChild;
+        if (last && /^(P|DIV|UL|OL)$/.test(last.tagName)) last.style.marginBottom = '0';
+      }
+
       function patchDocument(doc) {
         if (!doc) return;
 
-        const img = [...doc.images].find(i => i.src === LOGO_SRC || i.alt === 'Gunpowder Studios');
-        if (img && !(img.parentElement && img.parentElement.tagName === 'A')) {
+        const logo = [...doc.images].find(i => i.src === LOGO_SRC || i.alt === 'Gunpowder Studios');
+        if (logo && !(logo.parentElement && logo.parentElement.tagName === 'A')) {
           const a = doc.createElement('a');
           a.href = HOME_URL;
           a.target = '_blank';
           a.style.textDecoration = 'none';
-          img.parentNode.insertBefore(a, img);
-          a.appendChild(img);
+          logo.parentNode.insertBefore(a, logo);
+          a.appendChild(logo);
         }
 
         [...doc.querySelectorAll('div')].forEach(div => {
@@ -264,9 +485,18 @@
         const mary = findMaryIntro(doc);
         if (mary) {
           mary.classList.add('mary-intro');
+          mary.innerHTML = currentRichHtml();
           mary.style.fontFamily = fontSelect ? fontSelect.value : DEFAULT_FONT;
           mary.style.fontSize = `${sizeSelect ? Number(sizeSelect.value) : DEFAULT_SIZE}px`;
           mary.style.lineHeight = '1.7';
+          mary.style.color = '#f2f2f2';
+          styleRichEmailContent(mary);
+
+          const cell = mary.parentElement;
+          if (cell && cell.tagName === 'TD') {
+            const pad = paddingSelect ? Number(paddingSelect.value) : DEFAULT_PADDING;
+            cell.style.padding = `${pad}px`;
+          }
         }
       }
 
@@ -281,23 +511,55 @@
         try { patchDocument(frame && frame.contentDocument); } catch (_) {}
       }
 
-      function showToast(message) {
-        const toast = document.getElementById('toast');
-        if (!toast) return;
-        toast.textContent = message;
-        toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 2200);
-      }
+      loadSettings();
+      saveSettings();
+      syncLegacyIntro();
 
-      loadMaryStyle();
       if (frame) frame.addEventListener('load', patchPreview);
 
-      [fontSelect, sizeSelect].forEach(control => {
+      if (toolbar) toolbar.addEventListener('mousedown', event => {
+        if (event.target.closest('button')) event.preventDefault();
+      });
+
+      if (toolbar) toolbar.addEventListener('click', event => {
+        const button = event.target.closest('button');
+        if (!button) return;
+        if (button.dataset.cmd) runCommand(button.dataset.cmd);
+        if (button.dataset.action === 'link') addLink();
+        if (button.dataset.action === 'image') addImage();
+      });
+
+      if (htmlToggle) htmlToggle.addEventListener('click', toggleHtmlMode);
+
+      if (editor) editor.addEventListener('input', () => {
+        saveSettings();
+        syncLegacyIntro();
+      });
+
+      if (source) source.addEventListener('input', () => {
+        saveSettings();
+        syncLegacyIntro();
+      });
+
+      [fontSelect, sizeSelect, paddingSelect].forEach(control => {
         if (!control) return;
         control.addEventListener('change', () => {
-          saveMaryStyle();
+          applyEditorTypography();
+          saveSettings();
           patchPreview();
         });
+      });
+
+      const clearBtn = document.getElementById('clearDraftBtn');
+      if (clearBtn) clearBtn.addEventListener('click', () => {
+        setTimeout(() => {
+          if (legacyIntro && !legacyIntro.value) {
+            editor.innerHTML = '';
+            source.value = '';
+            localStorage.removeItem(RICH_KEY);
+            patchPreview();
+          }
+        }, 0);
       });
 
       const copyBtn = document.getElementById('copyHtmlBtn');
