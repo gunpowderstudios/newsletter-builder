@@ -27,6 +27,17 @@ jobs:
         uses: actions/configure-pages@v5
         with:
           enablement: true
+      - name: Inject v1.9 enhancement
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          html = p.read_text(encoding='utf-8')
+          tag = '  <script src="v1.9.js"></script>\n'
+          if tag not in html:
+              html = html.replace('</body>', tag + '</body>')
+              p.write_text(html, encoding='utf-8')
+          PY
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
