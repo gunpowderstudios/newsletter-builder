@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -23,25 +23,47 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
           enablement: true
-      - name: Inject v1.9 enhancement
+
+      - name: Persist v1.9 enhancement in index
         run: |
           python - <<'PY'
           from pathlib import Path
           p = Path('index.html')
           html = p.read_text(encoding='utf-8')
           tag = '  <script src="v1.9.js"></script>\n'
+          changed = False
           if tag not in html:
               html = html.replace('</body>', tag + '</body>')
+              changed = True
+          if '<div class="version">v1.8</div>' in html:
+              html = html.replace('<div class="version">v1.8</div>', '<div class="version">v1.9</div>')
+              changed = True
+          if changed:
               p.write_text(html, encoding='utf-8')
           PY
+
+      - name: Commit v1.9 source fix
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "index.html already contains v1.9"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add index.html
+            git commit -m "Persist v1.9 newsletter builder enhancement"
+            git push
+          fi
+
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
           path: '.'
+
       - name: Deploy to Pages
         id: deployment
         uses: actions/deploy-pages@v4
